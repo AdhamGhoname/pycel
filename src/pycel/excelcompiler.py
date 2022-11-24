@@ -379,6 +379,55 @@ class ExcelCompiler:
 
         excel_compiler._plugin_modules = plugins
         return excel_compiler
+    
+    @classmethod
+    def from_files(cls, filenames, plugins=None):
+        """ Load the spreadsheets saved by multiple `to_file`
+
+        :param filenames: filenames to load from, can be xlsx_name
+        :param plugins: module paths for plugin lib functions
+        """
+        excel_compilers = []
+        for filename in filenames:
+            extension = cls._filename_has_extension(filename) or next(
+                (ext for ext in cls.save_file_extensions
+                if os.path.exists(filename + '.' + ext)), None)
+
+            if not extension:
+                raise ValueError(f"Unrecognized file type or compiled file not found: '{filename}'")
+
+            if not filename.endswith(extension):
+                filename += '.' + extension
+
+            if extension[0] == 'p':
+                with open(filename, 'rb') as f:
+                    excel_compiler = pickle.load(f, protocol=-1)
+            else:
+                excel_compiler = cls._from_text(
+                    filename, is_json=extension == 'json')
+
+            excel_compiler.excel = _CompiledImporter('', {
+                'filename': excel_compiler.filename,
+                'cell_map': excel_compiler.cell_map,
+            })
+            excel_compiler.range_todos = []
+            excel_compiler.graph_todos = []
+
+            excel_compiler._plugin_modules = plugins
+            excel_compilers.append(excel_compiler)
+        
+        excel_compiler = excel_compilers[0]
+        merged_cell_map = {}
+        for compiler in excel_compilers[1:]:
+            merged_cell_map = {**merged_cell_map, **compiler.cell_map}
+        
+        excel_compiler.cell_map = merged_cell_map
+        excel_compiler.excel = _CompiledImporter('', {
+                'filename': excel_compiler.filename,
+                'cell_map': excel_compiler.cell_map,
+            })
+
+        return excel_compiler
 
     def export_to_dot(self, filename=None):
         try:

@@ -531,6 +531,7 @@ class ExcelFormula:
         'pycel.lib.lookup',
         'pycel.lib.stats',
         'pycel.lib.text',
+        'pycel.lib.custom',
         'math',
     )
 
